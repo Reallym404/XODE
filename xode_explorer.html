@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>XODE Blockchain Explorer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: #0a0e1a;
+            color: #e0e6ed;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1f3a 0%, #0d1117 100%);
+            border-bottom: 1px solid #30363d;
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        .header-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .logo-icon {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, #00d4aa 0%, #00a884 100%);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 18px;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(0, 212, 170, 0.3);
+        }
+        .logo-text h1 {
+            font-size: 24px;
+            background: linear-gradient(135deg, #00d4aa, #00a884);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .logo-text span {
+            font-size: 12px;
+            color: #8b949e;
+            letter-spacing: 1px;
+        }
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #238636;
+            box-shadow: 0 0 8px #238636;
+            animation: pulse 2s infinite;
+        }
+        .status-dot.offline {
+            background: #da3633;
+            box-shadow: 0 0 8px #da3633;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin: 24px 0;
+        }
+        .stat-card {
+            background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 20px;
+            transition: transform 0.2s, border-color 0.2s;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            border-color: #00d4aa;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #8b949e;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #e0e6ed;
+        }
+        .stat-value.green { color: #00d4aa; }
+        .stat-value.orange { color: #f0883e; }
+        .stat-value.red { color: #f85149; }
+        .stat-value.blue { color: #58a6ff; }
+        .stat-sub {
+            font-size: 12px;
+            color: #6e7681;
+            margin-top: 4px;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 32px 0 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(180deg, #00d4aa, #00a884);
+            border-radius: 2px;
+        }
+        .my-info {
+            background: linear-gradient(135deg, #161b22 0%, #0d1117 100%);
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 24px;
+        }
+        .my-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #21262d;
+        }
+        .my-info-row:last-child { border-bottom: none; }
+        .my-info-label { color: #8b949e; font-size: 13px; }
+        .my-info-value {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 13px;
+            color: #e0e6ed;
+        }
+        .my-info-value.addr { color: #58a6ff; }
+        .my-info-value.amt { color: #00d4aa; font-weight: 600; }
+        .blocks-container {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        .block-card {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s;
+        }
+        .block-card:hover {
+            border-color: #00d4aa;
+            box-shadow: 0 0 20px rgba(0, 212, 170, 0.1);
+        }
+        .block-header {
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            background: linear-gradient(90deg, #161b22 0%, #1c2128 100%);
+        }
+        .block-header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        .block-number {
+            background: linear-gradient(135deg, #00d4aa, #00a884);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-weight: 700;
+            font-size: 14px;
+        }
+        .block-number.genesis {
+            background: linear-gradient(135deg, #f0883e, #da3633);
+        }
+        .block-hash {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 13px;
+            color: #8b949e;
+        }
+        .block-time {
+            font-size: 13px;
+            color: #6e7681;
+        }
+        .block-toggle {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            background: #21262d;
+            border: 1px solid #30363d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #8b949e;
+        }
+        .block-toggle:hover {
+            background: #30363d;
+            color: #e0e6ed;
+        }
+        .block-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease-out;
+        }
+        .block-details.open {
+            max-height: 2000px;
+        }
+        .block-details-inner {
+            padding: 20px;
+            border-top: 1px solid #30363d;
+        }
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #21262d;
+        }
+        .detail-row:last-child { border-bottom: none; }
+        .detail-label {
+            color: #8b949e;
+            font-size: 13px;
+        }
+        .detail-value {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 13px;
+            color: #e0e6ed;
+            word-break: break-all;
+            max-width: 60%;
+            text-align: right;
+        }
+        .detail-value.hash { color: #58a6ff; }
+        .detail-value.address { color: #f0883e; }
+        .detail-value.amount { color: #00d4aa; font-weight: 600; }
+        .transactions-section {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #30363d;
+        }
+        .tx-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #e0e6ed;
+            margin-bottom: 12px;
+        }
+        .tx-card {
+            background: #0d1117;
+            border: 1px solid #21262d;
+            border-radius: 8px;
+            padding: 14px;
+            margin-bottom: 10px;
+        }
+        .tx-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .tx-row:last-child { margin-bottom: 0; }
+        .tx-label { font-size: 12px; color: #6e7681; }
+        .tx-value {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+            color: #e0e6ed;
+        }
+        .tx-amount {
+            font-size: 16px;
+            font-weight: 700;
+            color: #00d4aa;
+        }
+        .tx-arrow {
+            color: #6e7681;
+            margin: 0 8px;
+        }
+        .recipients-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+        .recipient-card {
+            background: #0d1117;
+            border: 1px solid #21262d;
+            border-radius: 8px;
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .recipient-addr {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+            color: #58a6ff;
+        }
+        .recipient-amt {
+            font-weight: 600;
+            color: #00d4aa;
+            font-size: 14px;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #21262d;
+            border-radius: 3px;
+            margin-top: 8px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4aa, #00a884);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6e7681;
+        }
+        .empty-state svg {
+            width: 64px;
+            height: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+        .refresh-btn {
+            background: linear-gradient(135deg, #00d4aa, #00a884);
+            color: #fff;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .refresh-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 212, 170, 0.3);
+        }
+        .refresh-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .search-box {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .search-input {
+            flex: 1;
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 12px 16px;
+            color: #e0e6ed;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+        .search-input:focus {
+            border-color: #00d4aa;
+        }
+        .search-input::placeholder {
+            color: #6e7681;
+        }
+        .footer {
+            text-align: center;
+            padding: 40px 20px;
+            color: #6e7681;
+            font-size: 13px;
+            border-top: 1px solid #21262d;
+            margin-top: 40px;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .badge-success { background: rgba(35, 134, 54, 0.2); color: #3fb950; }
+        .badge-burn { background: rgba(218, 54, 51, 0.2); color: #f85149; }
+        .badge-info { background: rgba(88, 166, 255, 0.2); color: #58a6ff; }
+        .badge-me { background: rgba(0, 212, 170, 0.2); color: #00d4aa; }
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .block-header { flex-direction: column; align-items: flex-start; gap: 10px; }
+            .detail-row { flex-direction: column; gap: 4px; }
+            .detail-value { max-width: 100%; text-align: left; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="logo-icon">X</div>
+                    <div class="logo-text">
+                        <h1>XODE Explorer</h1>
+                        <span>Blockchain Explorer</span>
+                    </div>
+                </div>
+                <div style="display:flex;gap:12px;align-items:center;">
+                    <div class="connection-status">
+                        <div class="status-dot" id="statusDot"></div>
+                        <span id="statusText">Connecting...</span>
+                    </div>
+                    <button class="refresh-btn" id="refreshBtn" onclick="loadData()">Refresh</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-label">Block Height</div>
+                <div class="stat-value" id="statHeight">-</div>
+                <div class="stat-sub">Latest block index</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">My Balance</div>
+                <div class="stat-value green" id="statBalance">-</div>
+                <div class="stat-sub" id="statAddress">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Supply</div>
+                <div class="stat-value" id="statSupply">-</div>
+                <div class="stat-sub">Max: 2,100,000,000 XODE</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Issued</div>
+                <div class="stat-value orange" id="statIssued">-</div>
+                <div class="stat-sub" id="statIssuedPct">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Remaining</div>
+                <div class="stat-value" id="statRemaining">-</div>
+                <div class="stat-sub">Available for mining</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Burned</div>
+                <div class="stat-value red" id="statBurned">-</div>
+                <div class="stat-sub">Sent to burn address</div>
+            </div>
+        </div>
+
+        <div class="search-box">
+            <input type="text" class="search-input" id="searchInput" placeholder="Search by block number, hash, or address..." onkeypress="if(event.key==='Enter')search()">
+            <button class="refresh-btn" onclick="search()">Search</button>
+        </div>
+
+        <div class="section-title">My Info</div>
+        <div class="my-info" id="myInfo">
+            <div class="my-info-row">
+                <span class="my-info-label">Address</span>
+                <span class="my-info-value addr" id="myAddress">-</span>
+            </div>
+            <div class="my-info-row">
+                <span class="my-info-label">Balance</span>
+                <span class="my-info-value amt" id="myBalance">-</span>
+            </div>
+            <div class="my-info-row">
+                <span class="my-info-label">Last Update</span>
+                <span class="my-info-value" id="myLastUpdate">-</span>
+            </div>
+        </div>
+
+        <div class="section-title">Blocks</div>
+        <div class="blocks-container" id="blocksContainer">
+            <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <rect x="2" y="3" width="20" height="14" rx="2"/>
+                    <line x1="8" y1="21" x2="16" y2="21"/>
+                    <line x1="12" y1="17" x2="12" y2="21"/>
+                </svg>
+                <p>Loading blockchain data...</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>XODE Blockchain Explorer &mdash; Client Mode</p>
+        <p style="margin-top:8px;font-size:12px;">Block Time: 120s | Block Reward: 1000 XODE | Transfer Fee: 1 XODE</p>
+    </div>
+
+    <script>
+        let blockchainData = { chain: [], address: "", balance: 0, total_issued: 0 };
+        let expandedBlocks = new Set();
+
+        async function loadData() {
+            const btn = document.getElementById('refreshBtn');
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+
+            try {
+                const response = await fetch('/api/chain');
+                if (!response.ok) throw new Error('Failed to fetch');
+                blockchainData = await response.json();
+                updateStats();
+                renderBlocks();
+                updateMyInfo();
+                updateStatus(true);
+            } catch (e) {
+                console.error('Load error:', e);
+                updateStatus(false);
+                document.getElementById('blocksContainer').innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="12" y1="8" x2="12" y2="12"/>
+                            <line x1="12" y1="16" x2="12.01" y2="16"/>
+                        </svg>
+                        <p>Unable to load client data</p>
+                        <p style="margin-top:8px;font-size:13px;">Make sure xode_client.py is running and has saved data</p>
+                    </div>
+                `;
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Refresh';
+            }
+        }
+
+        function updateStatus(online) {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            if (online) {
+                dot.classList.remove('offline');
+                text.textContent = 'Connected';
+            } else {
+                dot.classList.add('offline');
+                text.textContent = 'Offline';
+            }
+        }
+
+        function formatNumber(n) {
+            if (n === undefined || n === null) return '0';
+            return Number(n).toLocaleString('en-US', { maximumFractionDigits: 8 });
+        }
+
+        function formatTime(ts) {
+            if (!ts || ts === 0) return 'Genesis';
+            const d = new Date(ts * 1000);
+            return d.toLocaleString('en-US', {
+                year: 'numeric', month: 'short', day: 'numeric',
+                hour: '2-digit', minute: '2-digit', second: '2-digit'
+            });
+        }
+
+        function updateStats() {
+            const chain = blockchainData.chain || [];
+            const totalIssued = blockchainData.total_issued || 0;
+            const totalSupply = 2100000000;
+            const burned = blockchainData.burned_total || 0;
+            const myBalance = blockchainData.balance || 0;
+
+            document.getElementById('statHeight').textContent = chain.length > 0 ? '#' + (chain.length - 1) : '-';
+            document.getElementById('statBalance').textContent = formatNumber(myBalance) + ' XODE';
+            document.getElementById('statAddress').textContent = (blockchainData.address || '').substring(0, 16) + '...';
+            document.getElementById('statSupply').textContent = formatNumber(totalSupply);
+            document.getElementById('statIssued').textContent = formatNumber(totalIssued) + ' XODE';
+            document.getElementById('statIssuedPct').textContent = ((totalIssued / totalSupply) * 100).toFixed(4) + '% of total supply';
+            document.getElementById('statRemaining').textContent = formatNumber(totalSupply - totalIssued) + ' XODE';
+            document.getElementById('statBurned').textContent = formatNumber(burned) + ' XODE';
+        }
+
+        function updateMyInfo() {
+            document.getElementById('myAddress').textContent = blockchainData.address || '-';
+            document.getElementById('myBalance').textContent = formatNumber(blockchainData.balance || 0) + ' XODE';
+            document.getElementById('myLastUpdate').textContent = formatTime(blockchainData.last_update);
+        }
+
+        function renderBlocks() {
+            const container = document.getElementById('blocksContainer');
+            const chain = blockchainData.chain || [];
+            const myAddr = blockchainData.address || '';
+
+            if (chain.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                            <rect x="2" y="3" width="20" height="14" rx="2"/>
+                            <line x1="8" y1="21" x2="16" y2="21"/>
+                            <line x1="12" y1="17" x2="12" y2="21"/>
+                        </svg>
+                        <p>No blocks found</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = chain.slice().reverse().map(block => {
+                const isGenesis = block.index === 0;
+                const reward = block.reward || {};
+                const txs = block.transactions || [];
+                const isOpen = expandedBlocks.has(block.index);
+                const supply = block.supply || {};
+
+                let statusBadge = '';
+                if (isGenesis) {
+                    statusBadge = '<span class="badge badge-info">Genesis</span>';
+                } else if (reward.burned > 0) {
+                    statusBadge = '<span class="badge badge-burn">Burned</span>';
+                } else if (reward.online_count > 0) {
+                    statusBadge = '<span class="badge badge-success">Distributed</span>';
+                }
+
+                const recipients = reward.recipients || [];
+                const recipientHtml = recipients.length > 0
+                    ? `<div class="recipients-grid">${recipients.map(r => {
+                        const isMe = r.address === myAddr;
+                        return `<div class="recipient-card">
+                            <span class="recipient-addr">${r.address.substring(0, 12)}...${r.address.substring(r.address.length - 4)} ${isMe ? '<span class="badge badge-me">ME</span>' : ''}</span>
+                            <span class="recipient-amt">+${formatNumber(r.amount)} XODE</span>
+                        </div>`;
+                    }).join('')}</div>`
+                    : '<p style="color:#6e7681;font-size:13px;">No recipients</p>';
+
+                const txHtml = txs.length > 0
+                    ? txs.map(tx => {
+                        const isFromMe = tx.from === myAddr;
+                        const isToMe = tx.to === myAddr;
+                        return `<div class="tx-card">
+                            <div class="tx-row">
+                                <span class="tx-label">Transfer ${isFromMe ? '<span class="badge badge-burn">OUT</span>' : isToMe ? '<span class="badge badge-success">IN</span>' : ''}</span>
+                                <span class="tx-amount">${formatNumber(tx.amount)} XODE</span>
+                            </div>
+                            <div class="tx-row">
+                                <span class="tx-value">${tx.from.substring(0, 10)}...${tx.from.substring(tx.from.length - 4)}</span>
+                                <span class="tx-arrow">→</span>
+                                <span class="tx-value">${tx.to.substring(0, 10)}...${tx.to.substring(tx.to.length - 4)}</span>
+                            </div>
+                            <div class="tx-row">
+                                <span class="tx-label">Fee</span>
+                                <span class="tx-value">${formatNumber(tx.fee)} XODE</span>
+                            </div>
+                        </div>`;
+                    }).join('')
+                    : '<p style="color:#6e7681;font-size:13px;">No transactions in this block</p>';
+
+                return `
+                    <div class="block-card" data-index="${block.index}">
+                        <div class="block-header" onclick="toggleBlock(${block.index})">
+                            <div class="block-header-left">
+                                <div class="block-number ${isGenesis ? 'genesis' : ''}">#${block.index}</div>
+                                <div>
+                                    <div class="block-hash">${block.hash.substring(0, 20)}...${block.hash.substring(block.hash.length - 8)}</div>
+                                    <div class="block-time">${formatTime(block.timestamp)} ${statusBadge}</div>
+                                </div>
+                            </div>
+                            <div style="display:flex;align-items:center;gap:16px;">
+                                <div style="text-align:right;">
+                                    <div style="font-size:14px;font-weight:600;color:#00d4aa;">${formatNumber(reward.total || 0)} XODE</div>
+                                    <div style="font-size:12px;color:#6e7681;">${reward.online_count || 0} online</div>
+                                </div>
+                                <div class="block-toggle" id="toggle-${block.index}">${isOpen ? '−' : '+'}</div>
+                            </div>
+                        </div>
+                        <div class="block-details ${isOpen ? 'open' : ''}" id="details-${block.index}">
+                            <div class="block-details-inner">
+                                <div class="detail-row">
+                                    <span class="detail-label">Hash</span>
+                                    <span class="detail-value hash">${block.hash}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Previous Hash</span>
+                                    <span class="detail-value hash">${block.previous_hash}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Timestamp</span>
+                                    <span class="detail-value">${block.timestamp} (${formatTime(block.timestamp)})</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Total Reward</span>
+                                    <span class="detail-value amount">${formatNumber(reward.total || 0)} XODE</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Online Users</span>
+                                    <span class="detail-value">${reward.online_count || 0}</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Reward Per User</span>
+                                    <span class="detail-value amount">${formatNumber(reward.per_user || reward.reward_per_user || 0)} XODE</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Burned</span>
+                                    <span class="detail-value ${reward.burned > 0 ? 'red' : ''}">${formatNumber(reward.burned || 0)} XODE</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Burn Address</span>
+                                    <span class="detail-value address">${reward.burn_address || 'N/A'}</span>
+                                </div>
+                                ${supply.issued !== undefined ? `
+                                <div class="detail-row">
+                                    <span class="detail-label">Supply Issued</span>
+                                    <span class="detail-value">${formatNumber(supply.issued)} / ${formatNumber(supply.total)} XODE</span>
+                                </div>
+                                <div class="detail-row">
+                                    <span class="detail-label">Supply Remaining</span>
+                                    <span class="detail-value">${formatNumber(supply.remaining)} XODE</span>
+                                </div>
+                                ` : ''}
+
+                                <div style="margin-top:16px;">
+                                    <div class="tx-title">Reward Recipients (${recipients.length})</div>
+                                    ${recipientHtml}
+                                </div>
+
+                                ${txs.length > 0 ? `
+                                <div class="transactions-section">
+                                    <div class="tx-title">Transactions (${txs.length})</div>
+                                    ${txHtml}
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function toggleBlock(index) {
+            const details = document.getElementById(`details-${index}`);
+            const toggle = document.getElementById(`toggle-${index}`);
+            if (expandedBlocks.has(index)) {
+                expandedBlocks.delete(index);
+                details.classList.remove('open');
+                toggle.textContent = '+';
+            } else {
+                expandedBlocks.add(index);
+                details.classList.add('open');
+                toggle.textContent = '−';
+            }
+        }
+
+        function search() {
+            const query = document.getElementById('searchInput').value.trim().toLowerCase();
+            if (!query) return;
+
+            const chain = blockchainData.chain || [];
+            let found = false;
+
+            for (const block of chain) {
+                const match =
+                    block.index.toString() === query ||
+                    block.hash.toLowerCase().includes(query) ||
+                    block.previous_hash.toLowerCase().includes(query);
+
+                if (match) {
+                    expandedBlocks.add(block.index);
+                    found = true;
+                }
+            }
+
+            if (found) {
+                renderBlocks();
+                const el = document.querySelector(`[data-index="${Array.from(expandedBlocks).pop()}"]`);
+                if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            } else {
+                alert('No matching block found');
+            }
+        }
+
+        // Auto refresh every 30 seconds
+        setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                loadData();
+            }
+        }, 30000);
+
+        // Initial load
+        loadData();
+    </script>
+</body>
+</html>
