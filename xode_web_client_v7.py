@@ -1090,11 +1090,9 @@ class XodeClient:
         return balances
 
     def rebuild_balances(self):
-        """重建余额：优先使用历史记录数据（更准确）"""
-        # 如果有历史记录，用历史记录计算
-        if self.transaction_history:
-            return self.rebuild_balances_from_history()
-        # 否则用区块数据（可能不准确）
+        """重建余额：始终使用完整区块数据（用于排名等全局计算）"""
+        # transaction_history 只包含当前地址相关交易，不能用于计算全网排名
+        # 必须使用完整区块数据才能准确计算所有地址余额
         return self._rebuild_balances_from_blocks()
 
     def request_history(self):
@@ -1200,8 +1198,9 @@ class XodeClient:
         ]
 
     def get_my_rank(self):
-        """获取当前地址排名"""
-        balances = self.rebuild_balances()
+        """获取当前地址排名 - 使用完整区块数据确保准确性"""
+        # 必须使用完整区块数据，不能依赖过滤过的 transaction_history
+        balances = self._rebuild_balances_from_blocks()
         valid = {k: v for k, v in balances.items() if v > 0}
 
         if self.wallet.address not in valid:
@@ -1331,7 +1330,8 @@ class XodeClient:
             "wallet_file": WALLET_FILE,
             "chain_file": CHAIN_FILE,
             "wallet_created": self.wallet.created_at,
-            "balance_rank": self._calculate_balance_rank(),
+            # 优先使用服务端返回的准确排名，本地计算作为后备
+            "balance_rank": self.balance_rank if self.balance_rank > 0 else self._calculate_balance_rank(),
             "total_addresses": self._get_total_addresses(),
             "server_rankings": self.server_rankings,
             "burned_total": burned_total,
